@@ -1,19 +1,19 @@
 # GRC Automation & SOC 2 Type 2 Evidence Framework
 
-> **Role context:** Built and operated as Director of GRC / de facto CISO at a Series B fintech (real estate investment platform). Reporting to CFO. No prior GRC infrastructure existed. Everything below was designed, implemented, and operationalized from scratch.
+> **Role context:** Built and operated as Director of GRC / de facto CISO at a Series B fintech (regulated investment platform). Reporting to CFO. No prior GRC infrastructure existed. Everything below was designed, implemented, and operationalized from scratch.
 
 ---
 
 ## Overview
 
-This repository documents the GRC (Governance, Risk & Compliance) automation program I designed and led, encompassing:
+This repository documents the GRC (Governance, Risk & Compliance) program I designed and led, encompassing:
 
 - A **19-document policy library** anchored to SOC 2 CC controls, NIST CSF, and OWASP Top 10
-- A **Python-based permissions automation system** for Sage Intacct (ERP) role and access lifecycle management
 - A **~40-control SOC 2 Type 2 evidence framework** covering operational proof requirements across the full audit period
-- Incident response tooling, vendor risk workflows, and change management enforcement
+- Incident response architecture, vendor risk workflows, and change management enforcement
+- A **Python-based permissions automation design** for ERP role and access lifecycle management (architecture and design documented; implementation in progress)
 
-The program was built to satisfy a Big Four-adjacent SOC 2 Type 2 audit while simultaneously closing material operating effectiveness gaps discovered during a live data exposure incident.
+The program was built to satisfy a SOC 2 Type 2 audit while simultaneously closing material operating effectiveness gaps discovered during a live security incident.
 
 ---
 
@@ -21,76 +21,35 @@ The program was built to satisfy a Big Four-adjacent SOC 2 Type 2 audit while si
 
 Upon joining, the GRC function consisted of a legacy policy wiki with stale, unenforced documents. No operational evidence collection existed. Engineering and Product had no awareness that change management policies applied to their workflows — a critical operating effectiveness gap for SOC 2 Type 2, which requires proof of *consistent operation over time*, not just the existence of controls.
 
-A data exposure incident (root cause: BOLA/IDOR authorization filter bug — OWASP A01:2021) surfaced this gap directly: the affected release had bypassed change management review entirely. The post-incident audit finding became the forcing function for a full GRC reboot.
+A production security incident surfaced this gap directly: an affected release had bypassed change management review entirely. The post-incident audit finding became the forcing function for a full GRC reboot.
 
 ---
 
-## Repository Structure
+## Policy Library (19 Documents)
 
-```
-/policies/          # 19-document policy library (SOC 2 CC-mapped)
-/evidence/          # SOC 2 Type 2 evidence collection framework (~40 controls)
-/automation/
-  /intacct/         # Sage Intacct permissions automation (Python, two-phase)
-  /monitoring/      # Logging, alerting, and evidence capture tooling
-/templates/         # Audit artifact templates, vendor questionnaires, IRPs
-/docs/              # Architecture decisions, control mapping tables
-```
+All policies are versioned in a document management system (source of truth) and cross-referenced to SOC 2 CC controls and NIST CSF functions.
 
----
-
-## Sage Intacct Permissions Automation
-
-### Problem
-
-Sage Intacct (ERP/GL system) had accumulated permission drift over time: former employees retained access roles, role assignments were undocumented, and there was no automated lifecycle process tied to HR onboarding/offboarding. For SOC 2 Type 2, this created evidence risk — auditors require proof of periodic access reviews *and* timely revocation.
-
-### Solution: Two-Phase Python Automation
-
-**Phase 1 — Discovery & Audit**
-
-```python
-# Connects to Intacct API and exports full role/user matrix
-# Produces a structured CSV for access review sign-off
-# Flags: inactive users, orphaned roles, privilege outliers
-
-python intacct_audit.py \
-  --export-roles \
-  --flag-inactive-days 30 \
-  --output access_review_$(date +%Y%m).csv
-```
-
-- Authenticates via Intacct XML API (session-based, credential-vaulted)
-- Pulls all user records, assigned roles, last-login timestamps, and department mappings
-- Cross-references against HR system roster (CSV or API feed)
-- Outputs a structured access review artifact ready for manager sign-off and auditor submission
-
-**Phase 2 — Remediation & Lifecycle Enforcement**
-
-```python
-# Applies approved changes from signed access review
-# Deprovisions flagged users, reassigns roles per least-privilege model
-# Generates a timestamped change log for SOC 2 evidence
-
-python intacct_remediate.py \
-  --input approved_review_$(date +%Y%m).csv \
-  --dry-run          # validate before applying
-  --apply            # execute with audit log output
-  --evidence-output ./evidence/CC6.2/
-```
-
-- Idempotent: safe to re-run; only applies delta changes
-- All actions written to a tamper-evident JSONL change log
-- Evidence output folder maps directly to SOC 2 control CC6.2 (Logical Access)
-- Dry-run mode allows engineering review before any production changes
-
-### Control Mapping
-
-| Phase | SOC 2 CC | NIST CSF |
-|-------|----------|----------|
-| Discovery/Audit | CC6.2, CC6.3 | PR.AC-1, PR.AC-4 |
-| Remediation | CC6.2, CC6.6 | PR.AC-1, RS.RP-1 |
-| Evidence output | CC4.1, CC7.2 | DE.CM-3 |
+| # | Policy | Primary Controls |
+|---|--------|-----------------|
+| 1 | Information Security Policy | CC1.1, CC5.3 |
+| 2 | Acceptable Use Policy | CC1.4, CC6.1 |
+| 3 | Access Control Policy | CC6.1–CC6.5 |
+| 4 | Change Management Policy | CC8.1 |
+| 5 | Incident Response Policy | CC7.3–CC7.5 |
+| 6 | Vulnerability Management Policy | CC7.1 |
+| 7 | Data Classification & Handling Policy | C1.1, CC6.7 |
+| 8 | Encryption Policy | CC6.7 |
+| 9 | Business Continuity & DR Policy | A1.2–A1.3 |
+| 10 | Vendor / Third-Party Risk Policy | CC9.2 |
+| 11 | Secure Software Development Policy | CC8.1, CC6.6 |
+| 12 | Risk Assessment Policy | CC3.1–CC3.4 |
+| 13 | Logging & Monitoring Policy | CC4.1, CC7.2 |
+| 14 | Physical Security Policy | CC6.4 |
+| 15 | Privacy Policy (external) | CC2.2, C1.1 |
+| 16 | Data Retention & Disposal Policy | C1.2 |
+| 17 | Human Resources Security Policy | CC1.4, CC6.3 |
+| 18 | Network Security Policy | CC6.6, CC6.7 |
+| 19 | Security Awareness & Training Policy | CC1.4 |
 
 ---
 
@@ -148,8 +107,8 @@ The framework below covers ~40 controls across the five Trust Service Criteria. 
 
 | Control | Evidence Type | Frequency | Owner | Artifact |
 |---------|--------------|-----------|-------|----------|
-| CC6.1 — Access control infrastructure | SSO/IdP config screenshots; MFA enforcement proof | Quarterly | IT/GRC | Okta admin export |
-| CC6.2 — Access provisioning | Access request tickets; provisioning log | Per event | IT/GRC | Ticket export + Intacct audit CSV |
+| CC6.1 — Access control infrastructure | SSO/IdP config screenshots; MFA enforcement proof | Quarterly | IT/GRC | IdP admin export |
+| CC6.2 — Access provisioning | Access request tickets; provisioning log | Per event | IT/GRC | Ticket export + ERP audit CSV |
 | CC6.3 — Access removal | Offboarding checklist completions; deprovisioning log | Per event | IT/HR/GRC | Signed checklist + automation log |
 | CC6.4 — Physical access | Facility access log (if applicable) | Monthly | Ops | Badge log or N/A attestation |
 | CC6.5 — Logical access review | Quarterly access review sign-offs | Quarterly | GRC + system owners | Signed review + remediation evidence |
@@ -161,7 +120,7 @@ The framework below covers ~40 controls across the five Trust Service Criteria. 
 
 | Control | Evidence Type | Frequency | Owner | Artifact |
 |---------|--------------|-----------|-------|----------|
-| CC7.1 — Vulnerability management | Scan results + remediation tracking | Monthly scans; quarterly review | GRC/Engineering | Scanner export + Jira tickets |
+| CC7.1 — Vulnerability management | Scan results + remediation tracking | Monthly scans; quarterly review | GRC/Engineering | Scanner export + tickets |
 | CC7.2 — Anomaly detection | SIEM/log alert review; escalation records | Monthly | GRC/SecOps | Alert log |
 | CC7.3 — Incident response | Incident tickets with timeline and RCA | Per incident | GRC | IRP-formatted incident report |
 | CC7.4 — Incident resolution | Post-incident review docs; control updates | Per incident | GRC | After-action report |
@@ -186,7 +145,7 @@ The framework below covers ~40 controls across the five Trust Service Criteria. 
 
 | Control | Evidence Type | Frequency | Owner | Artifact |
 |---------|--------------|-----------|-------|----------|
-| A1.1 — Availability commitments | SLA documentation; uptime monitoring | Monthly | Engineering/GRC | Uptime report (e.g., Datadog) |
+| A1.1 — Availability commitments | SLA documentation; uptime monitoring | Monthly | Engineering/GRC | Uptime report |
 | A1.2 — Environmental threats | BCP/DR plan; backup test results | Annual | Engineering/GRC | DR test report |
 | A1.3 — Recovery testing | Tabletop or live DR exercise | Annual | Engineering/GRC | Exercise report + RTO/RPO validation |
 
@@ -206,49 +165,21 @@ The framework below covers ~40 controls across the five Trust Service Criteria. 
 
 ---
 
-## Policy Library (19 Documents)
+## Incident Response: Case Study
 
-All policies are versioned in Google Drive (source of truth) and cross-referenced to SOC 2 CC controls and NIST CSF functions.
+**Production Security Incident — Access Control Vulnerability**
 
-| # | Policy | Primary Controls |
-|---|--------|-----------------|
-| 1 | Information Security Policy | CC1.1, CC5.3 |
-| 2 | Acceptable Use Policy | CC1.4, CC6.1 |
-| 3 | Access Control Policy | CC6.1–CC6.5 |
-| 4 | Change Management Policy | CC8.1 |
-| 5 | Incident Response Policy | CC7.3–CC7.5 |
-| 6 | Vulnerability Management Policy | CC7.1 |
-| 7 | Data Classification & Handling Policy | C1.1, CC6.7 |
-| 8 | Encryption Policy | CC6.7 |
-| 9 | Business Continuity & DR Policy | A1.2–A1.3 |
-| 10 | Vendor / Third-Party Risk Policy | CC9.2 |
-| 11 | Secure Software Development Policy | CC8.1, CC6.6 |
-| 12 | Risk Assessment Policy | CC3.1–CC3.4 |
-| 13 | Logging & Monitoring Policy | CC4.1, CC7.2 |
-| 14 | Physical Security Policy | CC6.4 |
-| 15 | Privacy Policy (external) | CC2.2, C1.1 |
-| 16 | Data Retention & Disposal Policy | C1.2 |
-| 17 | Human Resources Security Policy | CC1.4, CC6.3 |
-| 18 | Network Security Policy | CC6.6, CC6.7 |
-| 19 | Security Awareness & Training Policy | CC1.4 |
-
----
-
-## Incident Response: Live Example
-
-**Data Exposure Incident — OWASP A01: BOLA/IDOR**
-
-A production release introduced an authorization filter bug that allowed authenticated users to access data objects belonging to other users under specific conditions. Root cause: broken object-level authorization — OWASP API Security Top 10, A01.
+A production release introduced an authorization vulnerability that allowed authenticated users to access data under specific conditions. Root cause involved a broken access control pattern — a class of vulnerability well-documented in the OWASP API Security Top 10.
 
 **GRC response actions:**
-- Activated IRP within 2 hours of detection
+- Activated IRP within hours of detection
 - Assembled cross-functional incident team (Engineering, Product, Legal, GRC)
 - Scoped impact via log analysis; identified affected records
 - Initiated customer notification workflow per CC7.5
-- Conducted full after-action review; identified change management bypass as contributing factor
-- Launched an 8-week Secure Software Development Transformation program in response
+- Conducted full after-action review; identified change management bypass as a contributing factor
+- Launched structured 8-week Secure Software Development Transformation program in response
 
-**SOC 2 operating effectiveness implication:** The incident revealed a gap between policy existence and operational awareness — Engineering and Product had not internalized that change management policies applied to their release workflows. This is an operating effectiveness gap: the policy existed, but consistent operation could not be demonstrated. The transformation program and evidence collection framework above were designed directly to close this gap for the Type 2 audit period.
+**SOC 2 operating effectiveness implication:** The incident revealed that Engineering and Product had no awareness that change management policies applied to their release workflows. This is an operating effectiveness gap — the policy existed, but consistent operation could not be demonstrated. The remediation program and evidence collection framework above were designed directly to close this gap for the Type 2 audit period.
 
 ---
 
@@ -267,9 +198,9 @@ Evidence-quality logging requires more than "logs exist." For SOC 2 Type 2, audi
 |-------|---------|----------------|
 | Application logs | Structured JSON → log aggregator | Searchable audit trail |
 | Infrastructure | Cloud-native logging (AWS CloudTrail / GCP Audit Logs) | API call history |
-| Identity/Access | Okta System Log | Authentication + provisioning events |
-| Endpoint | EDR console (CrowdStrike / SentinelOne) | Threat detection + coverage |
-| SIEM/Alerting | Datadog / Sumo Logic | Alert triage log for CC4.1, CC7.2 |
+| Identity/Access | IdP System Log | Authentication + provisioning events |
+| Endpoint | EDR console | Threat detection + coverage |
+| SIEM/Alerting | Log aggregation platform | Alert triage log for CC4.1, CC7.2 |
 | Secrets | Vault audit log | Secrets access trail |
 
 ### Monthly Review Artifact (template)
@@ -289,17 +220,74 @@ This signed log review document is the evidence artifact for CC4.1 and CC7.2.
 
 ---
 
-## Vendor Risk: Adversarial Assessment Example
+## Vendor Risk: Adversarial Assessment Case Study
 
-The framework was stress-tested against a high-stakes vendor assessment involving a critical financial custodian. Over multiple consecutive disclosure requests, the vendor returned incomplete or evasive responses regarding their own SOC 2 posture, subprocessor chain, and incident history.
+The framework was stress-tested against a high-stakes vendor assessment involving a critical financial services custodian. Over multiple consecutive disclosure requests, the vendor returned incomplete or evasive responses regarding their own SOC 2 posture, subprocessor chain, and incident history.
 
 GRC actions taken:
-- Maintained a structured disclosure gap log across all assessment cycles
-- Escalated to legal counsel with a formal notice framework
-- Documented vendor risk rating escalation in the risk register
+- Maintained structured disclosure gap log across all interactions
+- Escalated to Legal with formal notice framework
+- Documented vendor risk rating escalation in risk register
 - Proposed contractual remediation requirements and audit rights clause
 
-This example illustrates how a mature vendor risk program operates under adversarial conditions — not just checkbox collection.
+This case study illustrates how a mature vendor risk program operates under adversarial conditions — not just checkbox collection.
+
+---
+
+## ERP Permissions Automation: Architecture Design
+
+> **Note:** This section documents the design architecture for a Python-based permissions automation system. The design was completed and the implementation was initiated; full production deployment was in progress at the time of this writing.
+
+### Problem
+
+The ERP/GL system had accumulated permission drift over time: former employees retained access roles, role assignments were undocumented, and there was no automated lifecycle process tied to HR onboarding/offboarding. For SOC 2 Type 2, this creates evidence risk — auditors require proof of periodic access reviews *and* timely revocation.
+
+### Designed Solution: Two-Phase Python Automation
+
+**Phase 1 — Discovery & Audit**
+
+```python
+# Connects to ERP API and exports full role/user matrix
+# Produces a structured CSV for access review sign-off
+# Flags: inactive users, orphaned roles, privilege outliers
+
+python erp_audit.py \
+  --export-roles \
+  --flag-inactive-days 30 \
+  --output access_review_$(date +%Y%m).csv
+```
+
+- Authenticates via ERP XML API (session-based, credential-vaulted)
+- Pulls all user records, assigned roles, last-login timestamps, and department mappings
+- Cross-references against HR system roster (CSV or API feed)
+- Outputs a structured access review artifact ready for manager sign-off and auditor submission
+
+**Phase 2 — Remediation & Lifecycle Enforcement**
+
+```python
+# Applies approved changes from signed access review
+# Deprovisions flagged users, reassigns roles per least-privilege model
+# Generates a timestamped change log for SOC 2 evidence
+
+python erp_remediate.py \
+  --input approved_review_$(date +%Y%m).csv \
+  --dry-run          # validate before applying
+  --apply            # execute with audit log output
+  --evidence-output ./evidence/CC6.2/
+```
+
+- Idempotent: safe to re-run; only applies delta changes
+- All actions written to a tamper-evident JSONL change log
+- Evidence output folder maps directly to SOC 2 control CC6.2 (Logical Access)
+- Dry-run mode allows engineering review before any production changes
+
+### Control Mapping
+
+| Phase | SOC 2 CC | NIST CSF |
+|-------|----------|----------|
+| Discovery/Audit | CC6.2, CC6.3 | PR.AC-1, PR.AC-4 |
+| Remediation | CC6.2, CC6.6 | PR.AC-1, RS.RP-1 |
+| Evidence output | CC4.1, CC7.2 | DE.CM-3 |
 
 ---
 
@@ -308,9 +296,9 @@ This example illustrates how a mature vendor risk program operates under adversa
 | Domain | Specifics |
 |--------|-----------|
 | GRC Program Design | Built from zero: policy library, risk framework, control mapping, evidence program |
-| SOC 2 Type 2 | Operational evidence design, auditor-ready artifact production, external audit engagement |
-| Python Automation | Intacct API integration, access lifecycle automation, audit-trail generation |
-| Incident Response | Live IR leadership, OWASP root cause analysis, after-action → program change |
+| SOC 2 Type 2 | Operational evidence design, auditor-ready artifact production, external auditor engagement |
+| Python Automation | ERP API integration design, access lifecycle automation, audit-trail generation |
+| Incident Response | Live IR leadership, access control root cause analysis, after-action → program change |
 | Vendor Risk | Multi-cycle assessments, legal escalation, custodial risk management |
 | Cross-functional Leadership | Engineering, Product, Legal, Finance, HR alignment across all workstreams |
 | Regulatory Frameworks | SOC 2 CC/A/C/PI, NIST CSF, OWASP Top 10, fintech data privacy obligations |
@@ -319,8 +307,8 @@ This example illustrates how a mature vendor risk program operates under adversa
 
 ## Contact
 
-**James Pierson**  
-Director of GRC / de facto CISO  
-[LinkedIn] · [Email]
+**James Pierson**
+GRC & Security Executive | Open to opportunities
+[LinkedIn: linkedin.com/in/jpierson] · [jpierson@seanet.com]
 
 > *This repository is a sanitized portfolio representation. Proprietary data, customer information, and production credentials have been removed. Control frameworks and automation patterns are original work.*
