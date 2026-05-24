@@ -1,6 +1,6 @@
 # GRC Automation & SOC 2 Type 2 Evidence Framework
 
-> **Role context:** Built and operated as Director of GRC / de facto CISO at a Series B fintech (regulated investment platform). Reporting to CFO. No prior GRC infrastructure existed. Everything below was designed, implemented, and operationalized from scratch.
+> **Role context:** Built and operated as GRC lead at a fintech. Reporting to CFO. No prior GRC infrastructure existed. Everything below was designed, implemented, and operationalized from scratch.
 
 ---
 
@@ -222,7 +222,7 @@ This signed log review document is the evidence artifact for CC4.1 and CC7.2.
 
 ## Vendor Risk: Adversarial Assessment Case Study
 
-The framework was stress-tested against a high-stakes vendor assessment involving a critical financial services custodian. Over multiple consecutive disclosure requests, the vendor returned incomplete or evasive responses regarding their own SOC 2 posture, subprocessor chain, and incident history.
+The framework was stress-tested against a high-stakes vendor assessment involving a critical financial services partner. Over multiple consecutive disclosure requests, the vendor returned incomplete or evasive responses regarding their own SOC 2 posture, subprocessor chain, and incident history.
 
 GRC actions taken:
 - Maintained structured disclosure gap log across all interactions
